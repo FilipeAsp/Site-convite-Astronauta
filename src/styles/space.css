@@ -1,0 +1,69 @@
+/* src/styles/space.css */
+
+.stars-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* --- POEIRA ESTELAR (Estrelas distantes) --- */
+.star {
+  position: absolute;
+  background-color: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.4);
+  animation: twinkle var(--duration, 4s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+/* --- ESTRELA PONTUDINHA (Brilho mágico) --- */
+.pointy-star {
+  position: absolute;
+  background-color: #ffffff;
+  /* O segredo! Isso corta o quadrado formando as 4 pontas curvadas */
+  clip-path: polygon(50% 0%, 55% 45%, 100% 50%, 55% 55%, 50% 100%, 45% 55%, 0% 50%, 45% 45%);
+  /* drop-shadow cria um contorno de luz que respeita o formato cortado */
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
+  animation: twinkle var(--duration, 4s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.1; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* --- ESTRELAS CADENTES --- */
+.shooting-star {
+  position: absolute;
+  width: 120px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%);
+  animation: shooting var(--duration, 5s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  opacity: 0;
+  transform: rotate(-45deg);
+}
+
+.shooting-star::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 15px 3px #fff;
+}
+
+@keyframes shooting {
+  0% { transform: translate(0, 0) rotate(-45deg); opacity: 1; }
+  15% { transform: translate(-300px, 300px) rotate(-45deg); opacity: 0; }
+  100% { opacity: 0; }
+}

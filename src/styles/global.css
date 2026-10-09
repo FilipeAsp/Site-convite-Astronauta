@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Paleta Espacial (Mickey Astronauta) */
+  --space-dark: #0B0E14;
+  --space-blue: #1A233A;
+  --star-glow: #F9F9F9;
+  --accent-orange: #FF8C00;
+  --accent-blue: #00D2FF;
+  
+  --text-main: #E2E8F0;
+  --text-dark: #0F172A;
+}
+
+body {
+  /* Fundo gradiente escuro simulando o espaço profundo */
+  background: radial-gradient(ellipse at bottom, var(--space-blue) 0%, var(--space-dark) 100%);
+  color: var(--text-main);
+  font-family: 'Poppins', sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Ocultar barra de rolagem mas manter funcionamento */
+::-webkit-scrollbar {
+  width: 0px;
+}

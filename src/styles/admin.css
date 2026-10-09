@@ -1,0 +1,56 @@
+/* src/styles/admin.css */
+
+.admin-page {
+  min-height: 100vh; background: #030610; color: #fff;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 80px 20px; font-family: 'Poppins', sans-serif;
+}
+
+.admin-card-wide {
+  background: rgba(13, 31, 58, 0.65); border: 1px solid rgba(192, 192, 192, 0.3);
+  border-radius: 24px; padding: 40px 30px; width: 100%; max-width: 960px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5); backdrop-filter: blur(12px);
+}
+
+.admin-header { text-align: center; margin-bottom: 40px; }
+.admin-title { color: #FFD166; font-family: 'Baloo 2', cursive; font-size: 2.5rem; margin-bottom: 5px; }
+.admin-sub { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; }
+
+/* Grid dos Contadores */
+.admin-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; margin-bottom: 40px; }
+.admin-stat-box { 
+  background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); 
+  border-radius: 16px; padding: 20px 10px; text-align: center; transition: transform 0.2s; 
+}
+.admin-stat-box:hover { transform: translateY(-3px); border-color: rgba(56,182,255,0.4); }
+.admin-stat-num { display: block; font-family: 'Baloo 2', cursive; font-size: 2.5rem; line-height: 1; margin-bottom: 5px; }
+.admin-stat-label { font-size: 0.70rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+
+/* Botões de Ação */
+.admin-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+.admin-btn { padding: 12px 20px; border-radius: 12px; border: none; font-family: 'Poppins', sans-serif; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+.btn-refresh { background: rgba(56, 182, 255, 0.2); color: #38B6FF; border: 1px solid rgba(56, 182, 255, 0.4); }
+.btn-refresh:hover { background: rgba(56, 182, 255, 0.4); }
+.btn-excel { background: #059669; color: white; }
+.btn-excel:hover:not(:disabled) { background: #047857; transform: translateY(-2px); }
+.btn-excel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Tabela de Convidados */
+.admin-table-wrap { overflow-x: auto; background: rgba(0,0,0,0.3); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); }
+.admin-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+.admin-table th { background: rgba(0,0,0,0.5); padding: 16px; color: #38B6FF; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.admin-table td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+.admin-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* Tags dos acompanhantes */
+.guest-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; margin: 4px 4px 0 0; font-size: 0.8rem; border: 1px solid rgba(255,255,255,0.05); }
+.tag-adult { color: #38B6FF; }
+.tag-child { color: #FFD166; }
+.badge { background: #059669; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 0.8rem; }
+.btn-remove { background: transparent; border: 1px solid #FF6B6B; color: #FF6B6B; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.8rem; }
+.btn-remove:hover { background: #FF6B6B; color: white; }
+
+/* Extras (Senhas e Divisórias) */
+.admin-input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid rgba(192, 192, 192, 0.3); background: rgba(0, 0, 0, 0.4); color: white; font-family: 'Poppins', sans-serif; outline: none; margin-bottom: 15px;}
+.admin-input:focus { border-color: #38B6FF; }
+.admin-divider { border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 30px 0; }
