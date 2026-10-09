@@ -1,10 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    
+    <!-- Ícone de Foguete na aba do navegador (usando emoji direto no código!) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mickey-astronauta</title>
+    
+    <!-- Título da aba puxando a variável do seu .env -->
+    <title>Bday - %VITE_NOME_CRIANCA%</title>
+
+    <!-- Meta Tags para o preview do WhatsApp (Open Graph) -->
+    <meta property="og:title" content="1º Aninho - %VITE_NOME_CRIANCA% 🚀" />
+    <meta property="og:description" content="Venha celebrar esse momento mágico! Confirme sua presença." />
+    <meta property="og:image" content="/preview.jpg" />
+    <meta property="og:type" content="website" />
   </head>
   <body>
     <div id="root"></div>
