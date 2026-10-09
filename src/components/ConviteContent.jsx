@@ -5,33 +5,128 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import '../styles/cards.css';
 
+/* ---------- DADOS DA FESTA (Simplificados e Inteligentes) ---------- */
+const nomeAniversariante = import.meta.env.VITE_NOME_CRIANCA || "Lucca";
+const dataConfig = import.meta.env.VITE_DATA_FESTA || "2026-12-23"; 
+const horaConfig = import.meta.env.VITE_HORA_FESTA || "19h30";
+const horaLimpa = horaConfig.replace(/h/i, ':');
+
+// A data para a contagem regressiva
+const EVENT_DATE = new Date(`${dataConfig}T${horaLimpa}:00-03:00`);
+
+// Formata a data para exibir bonitinho no card
+const formatarDataCard = (dateObj) => {
+  const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  return `${dateObj.getDate()} de ${meses[dateObj.getMonth()]} de ${dateObj.getFullYear()}`;
+};
+const dataExibicao = formatarDataCard(EVENT_DATE);
+
+const EVENT_LOCAL = { address: import.meta.env.VITE_LOCAL_FESTA || "Endereço a definir" };
+
+// --- CORREÇÃO DO GOOGLE AGENDA ---
+// Em vez de usar Z (UTC), formata exatamente como o Google Calendar espera no fuso local
+const formatarParaAgenda = (dataISO, horasAdicionais = 0) => {
+  const d = new Date(dataISO);
+  if (horasAdicionais > 0) d.setHours(d.getHours() + horasAdicionais);
+  
+  // Extrai pedaço por pedaço no horário local
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  const hora = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const seg = String(d.getSeconds()).padStart(2, '0');
+  
+  // Retorna no formato puro YYYYMMDDTHHMMSS (Sem o Z!)
+  // O Google Agenda entende isso como "O horário exato local do usuário"
+  return `${ano}${mes}${dia}T${hora}${min}${seg}`;
+};
+
+const dateStartAgenda = formatarParaAgenda(EVENT_DATE);
+// Adicionando 4 horas para o fim da festa
+const dateEndAgenda = formatarParaAgenda(EVENT_DATE, 4); 
+
+// Adicionamos também a timezone de SP/RJ (America/Sao_Paulo) para forçar o Google a não errar!
+const CALENDAR_URL =
+  'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+  `&text=${encodeURIComponent(`1º Aninho do ${nomeAniversariante} 🚀`)}` +
+  `&dates=${dateStartAgenda}/${dateEndAgenda}` +
+  `&ctz=America/Sao_Paulo` + 
+  `&location=${encodeURIComponent(EVENT_LOCAL.address)}` +
+  `&details=${encodeURIComponent(`Venha celebrar o 1º aninho do ${nomeAniversariante}! Esperamos por você com muito amor.`)}`;
+
+const MAP_URL = import.meta.env.VITE_LINK_MAPA || `https://maps.google.com/?q=${encodeURIComponent(EVENT_LOCAL.address)}`;
+/* ---------- Contagem regressiva ---------- */
+function useCountdown(target) {
+  const calc = () => {
+    const diff = target.getTime() - Date.now();
+    if (diff <= 0) return null;
+    return {
+      dias: Math.floor(diff / 86400000),
+      horas: Math.floor((diff / 3600000) % 24),
+      min: Math.floor((diff / 60000) % 60),
+      seg: Math.floor((diff / 1000) % 60),
+    };
+  };
+  const [time, setTime] = useState(calc);
+  useEffect(() => {
+    const id = setInterval(() => setTime(calc()), 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return time;
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+
 export default function ConviteContent() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const [sucesso, setSucesso] = useState(false);
+  const [erro, setErro] = useState("");
 
-  // Estados do Formulário
+  // Formulário
   const [nomePrincipal, setNomePrincipal] = useState("");
   const [adultos, setAdultos] = useState([]);
   const [criancas, setCriancas] = useState([]);
 
-  // --- Efeito do Foguete Pousando ---
+  const countdown = useCountdown(EVENT_DATE);
+
+  /* --- Foguete da barra de rolagem --- */
   useEffect(() => {
     const handleScroll = () => {
-      const totalScroll = document.documentElement.scrollTop;
-      const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      // Garante que o valor fique entre 0 (topo) e 1 (fim da página)
-      const scroll = Math.max(0, Math.min(1, totalScroll / windowHeight));
+      const total = document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scroll = height > 0 ? Math.max(0, Math.min(1, total / height)) : 0;
       setScrollProgress(scroll);
     };
-    window.addEventListener('scroll', handleScroll);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // --- Lógica de Acompanhantes ---
+  /* --- Animação de entrada ao rolar (scroll reveal) --- */
+  useEffect(() => {
+    const els = document.querySelectorAll('.reveal:not(.visible)');
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [sucesso]);
+
+  /* --- Acompanhantes --- */
   const changeAdultos = (n) => {
-    const val = Math.max(0, Math.min(4, n)); // Máx 4 adultos extras
-    setAdultos(prev => {
+    const val = Math.max(0, Math.min(4, n));
+    setAdultos((prev) => {
       const l = [...prev];
       while (l.length < val) l.push({ nome: "", parentesco: "" });
       while (l.length > val) l.pop();
@@ -40,8 +135,8 @@ export default function ConviteContent() {
   };
 
   const changeCriancas = (n) => {
-    const val = Math.max(0, Math.min(5, n)); // Máx 5 crianças extras
-    setCriancas(prev => {
+    const val = Math.max(0, Math.min(5, n));
+    setCriancas((prev) => {
       const l = [...prev];
       while (l.length < val) l.push({ nome: "", parentesco: "", idade: "" });
       while (l.length > val) l.pop();
@@ -49,69 +144,99 @@ export default function ConviteContent() {
     });
   };
 
-  // --- Envio para o Banco de Dados (Firebase) ---
+  // Atualiza um campo sem alterar o estado original
+  const updateItem = (setter, idx, field, value) => {
+    setter((prev) => prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
+  };
+
+  /* --- Confete em duas laterais --- */
+  const fireConfetti = () => {
+    const colors = ['#38B6FF', '#FFD166', '#FFFFFF', '#9D5CE6'];
+    const end = Date.now() + 2000;
+    (function frame() {
+      confetti({ particleCount: 4, angle: 60, spread: 60, origin: { x: 0, y: 0.7 }, colors });
+      confetti({ particleCount: 4, angle: 120, spread: 60, origin: { x: 1, y: 0.7 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+    confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, colors });
+  };
+
+  /* --- Envio para o Firebase --- */
   const confirmarPresenca = async (e) => {
     e.preventDefault();
-    if (!nomePrincipal.trim()) return alert("Precisamos do nome do Capitão da família!");
-    if (criancas.some(c => !c.idade)) return alert("Por favor, informe a idade de todos os pequenos astronautas.");
-    
+    setErro("");
+
+    if (!nomePrincipal.trim()) return setErro("Precisamos do nome do Capitão da família! 👨‍🚀");
+    if (criancas.some((c) => !c.idade)) return setErro("Informe a idade de todos os pequenos astronautas. 🧒");
+
     setLoading(true);
     try {
       await addDoc(collection(db, "convidados"), {
         nomePrincipal: nomePrincipal.trim(),
         acompanhantes: [
-          ...adultos.map(a => ({ ...a, tipo: "Adulto" })),
-          ...criancas.map(c => ({ ...c, tipo: "Criança" })),
+          ...adultos.map((a) => ({ ...a, tipo: "Adulto" })),
+          ...criancas.map((c) => ({ ...c, tipo: "Criança" })),
         ],
         totalPessoas: 1 + adultos.length + criancas.length,
         dataConfirmacao: serverTimestamp(),
       });
 
-      // 1. Sucesso no banco!
       setSucesso(true);
-      
-      // 2. Dispara os fogos de artifício
-      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#38B6FF', '#FFD166', '#FFFFFF'] });
-      
-      // 3. O Foguete de rolagem volta pro topo suavemente
+      fireConfetti();
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
     } catch (err) {
       console.error(err);
-      alert("Houve um problema de comunicação com a base. Tente novamente!");
+      setErro("Houve um problema de comunicação com a base. Tente novamente! 🛰️");
     }
     setLoading(false);
   };
 
   return (
     <>
-      {/* Barra de Progresso Lateral (Foguete Pousando) */}
+      {/* Barra lateral com foguete */}
       <div className="scroll-tracker">
-        {/* Usando o mesmo ícone do foguete do splash, descendo a pista! */}
-        <div className="scroll-rocket" style={{ top: `${scrollProgress * 100}%` }}>
-          🚀
-        </div>
+        <div className="scroll-rocket" style={{ top: `${scrollProgress * 100}%` }}>🚀</div>
       </div>
 
       <div className="cards-container">
-        
-        {/* FOTO E NOME (Aparecem logo após a fumaça) */}
-        <div className="hero-photo-wrap">
-          <img src="/crianca2.png" alt={import.meta.env.VITE_NOME_CRIANCA || "Lucca"} className="hero-photo" />
-          <h1 className="hero-name">{import.meta.env.VITE_NOME_CRIANCA || "Nome do Aniversariante"}</h1>
+
+        {/* HERO */}
+        <div className="hero-photo-wrap reveal">
+          <div className="hero-photo-frame">
+            <img src="/crianca2.png" alt={nomeAniversariante} className="hero-photo" />
+          </div>
+          {/* Usando a variável de ambiente para o nome! */}
+          <h1 className="hero-name">{nomeAniversariante}</h1>
           <span className="hero-badge">👨‍🚀 1 Aninho</span>
-          
-          {/* Mensagem de agradecimento (Só aparece DEPOIS de confirmar) */}
+
+          {/* Contagem regressiva */}
+          <div className="countdown-wrapper">
+            <p className="countdown-title">Tempo para o lançamento 🚀</p>
+            
+            <div className="countdown" aria-label="Contagem regressiva para a festa">
+              {countdown ? (
+                <>
+                  <div className="count-box"><strong>{pad(countdown.dias)}</strong><span>dias</span></div>
+                  <div className="count-box"><strong>{pad(countdown.horas)}</strong><span>horas</span></div>
+                  <div className="count-box"><strong>{pad(countdown.min)}</strong><span>min</span></div>
+                  <div className="count-box"><strong>{pad(countdown.seg)}</strong><span>seg</span></div>
+                </>
+              ) : (
+                <div className="count-done">🎉 Lançamento autorizado! A festa chegou!</div>
+              )}
+            </div>
+          </div>
+
           {sucesso && (
             <div className="success-msg">
               <h3>Voo Confirmado! 🌌</h3>
-              <p>Obrigado por confirmar presença! O {import.meta.env.VITE_NOME_CRIANCA || "Lucca"} e sua família estão muito felizes em compartilhar esse momento mágico com vocês.</p>
+              <p>Obrigado por confirmar presença! O {nomeAniversariante} e sua família estão muito felizes em compartilhar esse momento mágico com vocês.</p>
             </div>
           )}
         </div>
 
         {/* 1. MENSAGEM ESPECIAL */}
-        <div className="space-card">
+        <div className="space-card reveal">
           <img src="/mickey-astronaut2.png" alt="" className="deco-char pos-top-right float-alt-1" />
           <span className="card-icon" style={{ marginTop: '10px' }}>✨</span>
           <h2 className="card-title">Um Ano de Magia</h2>
@@ -127,18 +252,32 @@ export default function ConviteContent() {
         </div>
 
         {/* 2. DADOS DA FESTA */}
-        <div className="space-card">
+        <div className="space-card reveal">
           <img src="/goofy11.png" alt="" className="deco-char pos-top-left float-alt-2" />
           <span className="card-icon">📍</span>
           <h2 className="card-title">Base de Lançamento</h2>
-          <div className="info-row"><span className="info-icon">🗓️</span><div><p className="info-label">Data</p><p className="info-value">{import.meta.env.VITE_DATA_FESTA || "Data da Festa"}</p></div></div>
-          <div className="info-row"><span className="info-icon">⏰</span><div><p className="info-label">Horário</p><p className="info-value">{import.meta.env.VITE_HORA_FESTA || "Horário da Festa"}</p></div></div>
-          <div className="info-row"><span className="info-icon">🗺️</span><div><p className="info-label">Local</p><p className="info-value">{import.meta.env.VITE_LOCAL_FESTA || "Local da Festa"}</p></div></div>
-          <a href={import.meta.env.VITE_LINK_MAPA || "#"} target="_blank" rel="noopener noreferrer" className="btn-map">📍 Ver no Mapa</a>
+
+          <div className="info-row">
+            <span className="info-icon">🗓️</span>
+            <div><p className="info-label">Data</p><p className="info-value">{dataExibicao}</p></div>
+          </div>
+          <div className="info-row">
+            <span className="info-icon">⏰</span>
+            <div><p className="info-label">Horário</p><p className="info-value">{horaConfig}</p></div>
+          </div>
+          <div className="info-row">
+            <span className="info-icon">🗺️</span>
+            <div><p className="info-label">Local</p><p className="info-value">{EVENT_LOCAL.address}</p></div>
+          </div>
+
+          <div className="btn-group">
+            <a href={MAP_URL} target="_blank" rel="noopener noreferrer" className="btn-map">📍 Ver no Mapa</a>
+            <a href={CALENDAR_URL} target="_blank" rel="noopener noreferrer" className="btn-calendar">📅 Adicionar à agenda</a>
+          </div>
         </div>
 
-        {/* 3. DICAS DE PRESENTE */}
-        <div className="space-card">
+        {/* 3. PRESENTES */}
+        <div className="space-card reveal">
           <img src="/june217.png" alt="" className="deco-char pos-bottom-right float-alt-3" />
           <span className="card-icon">🎁</span>
           <h2 className="card-title">Dicas de Presente</h2>
@@ -152,56 +291,72 @@ export default function ConviteContent() {
 
         {/* 4. RSVP */}
         {!sucesso && (
-          <div className="space-card">
+          <div className="space-card reveal">
             <img src="/mickey-mouse-astronaut.png" alt="" className="deco-char pos-top-left float-alt-2" />
             <span className="card-icon">✅</span>
             <h2 className="card-title">Confirme sua Presença</h2>
             <p className="rsvp-alert">⚠️ Confirmação até dia 15/12</p>
-            
-            <form onSubmit={confirmarPresenca}>
-              <input type="text" className="input-field" placeholder="Nome do Responsável Principal" required value={nomePrincipal} onChange={e => setNomePrincipal(e.target.value)} />
-              
-              {/* Box Adultos */}
+
+            <form onSubmit={confirmarPresenca} noValidate>
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Nome do Responsável Principal"
+                required
+                value={nomePrincipal}
+                onChange={(e) => setNomePrincipal(e.target.value)}
+              />
+
+              {/* Adultos */}
               <div className="acomp-box">
-                <p className="info-label" style={{marginBottom: '10px', color: '#38B6FF'}}>Acompanhantes Adultos</p>
+                <p className="info-label" style={{ marginBottom: '10px', color: '#38B6FF' }}>Acompanhantes Adultos</p>
                 <div className="counter-row">
-                  <button type="button" className="counter-btn" onClick={() => changeAdultos(adultos.length - 1)}>-</button>
+                  <button type="button" className="counter-btn" aria-label="Remover adulto" onClick={() => changeAdultos(adultos.length - 1)}>−</button>
                   <span className="counter-val">{adultos.length}</span>
-                  <button type="button" className="counter-btn" onClick={() => changeAdultos(adultos.length + 1)}>+</button>
+                  <button type="button" className="counter-btn" aria-label="Adicionar adulto" onClick={() => changeAdultos(adultos.length + 1)}>+</button>
                   <span className="counter-label">adulto(s)</span>
                 </div>
                 {adultos.map((a, idx) => (
                   <div key={idx} className="acomp-grid">
-                    <input className="input-field" type="text" placeholder="Nome" required value={a.nome} onChange={e => { const l=[...adultos]; l[idx].nome=e.target.value; setAdultos(l); }} />
-                    <input className="input-field" type="text" placeholder="Parentesco (Ex: Tia)" required value={a.parentesco} onChange={e => { const l=[...adultos]; l[idx].parentesco=e.target.value; setAdultos(l); }} />
+                    <input className="input-field" type="text" placeholder="Nome" required value={a.nome}
+                      onChange={(e) => updateItem(setAdultos, idx, 'nome', e.target.value)} />
+                    <input className="input-field" type="text" placeholder="Parentesco (Ex: Tia)" required value={a.parentesco}
+                      onChange={(e) => updateItem(setAdultos, idx, 'parentesco', e.target.value)} />
                   </div>
                 ))}
               </div>
 
-              {/* Box Crianças */}
+              {/* Crianças */}
               <div className="acomp-box">
-                <p className="info-label" style={{marginBottom: '10px', color: '#FFD166'}}>Crianças</p>
+                <p className="info-label" style={{ marginBottom: '10px', color: '#FFD166' }}>Crianças</p>
                 <div className="counter-row">
-                  <button type="button" className="counter-btn" onClick={() => changeCriancas(criancas.length - 1)}>-</button>
+                  <button type="button" className="counter-btn" aria-label="Remover criança" onClick={() => changeCriancas(criancas.length - 1)}>−</button>
                   <span className="counter-val">{criancas.length}</span>
-                  <button type="button" className="counter-btn" onClick={() => changeCriancas(criancas.length + 1)}>+</button>
+                  <button type="button" className="counter-btn" aria-label="Adicionar criança" onClick={() => changeCriancas(criancas.length + 1)}>+</button>
                   <span className="counter-label">criança(s)</span>
                 </div>
                 {criancas.map((c, idx) => (
-                  <div key={idx} className="acomp-grid" style={{gridTemplateColumns: '1fr', gap: '5px'}}>
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px'}}>
-                      <input className="input-field" type="text" placeholder="Nome" required value={c.nome} onChange={e => { const l=[...criancas]; l[idx].nome=e.target.value; setCriancas(l); }} />
-                      <input className="input-field" type="text" placeholder="Parentesco (Ex: Primo)" required value={c.parentesco} onChange={e => { const l=[...criancas]; l[idx].parentesco=e.target.value; setCriancas(l); }} />
+                  <div key={idx} className="acomp-grid acomp-grid-kid">
+                    <div className="acomp-grid">
+                      <input className="input-field" type="text" placeholder="Nome" required value={c.nome}
+                        onChange={(e) => updateItem(setCriancas, idx, 'nome', e.target.value)} />
+                      <input className="input-field" type="text" placeholder="Parentesco (Ex: Primo)" required value={c.parentesco}
+                        onChange={(e) => updateItem(setCriancas, idx, 'parentesco', e.target.value)} />
                     </div>
-                    <select className="input-field" required value={c.idade} onChange={e => { const l=[...criancas]; l[idx].idade=e.target.value; setCriancas(l); }}>
+                    <select className="input-field" required value={c.idade}
+                      onChange={(e) => updateItem(setCriancas, idx, 'idade', e.target.value)}>
                       <option value="">Selecione a Idade</option>
                       <option value="Menos de 1 ano">Menos de 1 ano</option>
-                      {[1,2,3,4,5,6,7,8,9,10,11].map(n => (<option key={n} value={`${n} anos`}>{n} anos</option>))}
+                      {[1,2,3,4,5,6,7,8,9,10,11].map((n) => (
+                        <option key={n} value={`${n} anos`}>{n} anos</option>
+                      ))}
                       <option value="12 anos ou mais">12 anos ou mais</option>
                     </select>
                   </div>
                 ))}
               </div>
+
+              {erro && <p className="form-error" role="alert" style={{color: '#FF6B6B', marginBottom: '15px'}}>{erro}</p>}
 
               <button type="submit" className="btn-primary" disabled={loading}>
                 {loading ? "Registrando... 🚀" : "Confirmar Voo 🚀"}
@@ -210,9 +365,9 @@ export default function ConviteContent() {
           </div>
         )}
 
-        {/* 🚀 FOOTER E ASSINATURA */}
-        <footer className="footer">
-          Feito com <em>🚀 amor</em> para o <em>Lucca</em><br />
+        {/* FOOTER */}
+        <footer className="footer reveal">
+          Feito com <em>🚀 amor</em> para o <em>{nomeAniversariante}</em><br />
           <a href="/admin" className="footer-admin-link">⚙ área restrita</a>
           <div className="footer-asp-wrapper">
             <p className="footer-asp-label">Feito e desenvolvido por</p>
