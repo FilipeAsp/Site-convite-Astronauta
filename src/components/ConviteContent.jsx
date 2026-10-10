@@ -1,20 +1,17 @@
-// src/components/ConviteContent.jsx
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/firebase";
 import '../styles/cards.css';
 
-/* ---------- DADOS DA FESTA (Simplificados e Inteligentes) ---------- */
+/* ---------- DADOS DA FESTA ---------- */
 const nomeAniversariante = import.meta.env.VITE_NOME_CRIANCA || "Lucca";
 const dataConfig = import.meta.env.VITE_DATA_FESTA || "2026-12-23"; 
 const horaConfig = import.meta.env.VITE_HORA_FESTA || "19h30";
 const horaLimpa = horaConfig.replace(/h/i, ':');
 
-// A data para a contagem regressiva
 const EVENT_DATE = new Date(`${dataConfig}T${horaLimpa}:00-03:00`);
 
-// Formata a data para exibir bonitinho no card
 const formatarDataCard = (dateObj) => {
   const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
   return `${dateObj.getDate()} de ${meses[dateObj.getMonth()]} de ${dateObj.getFullYear()}`;
@@ -23,13 +20,10 @@ const dataExibicao = formatarDataCard(EVENT_DATE);
 
 const EVENT_LOCAL = { address: import.meta.env.VITE_LOCAL_FESTA || "Endereço a definir" };
 
-// --- CORREÇÃO DO GOOGLE AGENDA ---
-// Em vez de usar Z (UTC), formata exatamente como o Google Calendar espera no fuso local
 const formatarParaAgenda = (dataISO, horasAdicionais = 0) => {
   const d = new Date(dataISO);
   if (horasAdicionais > 0) d.setHours(d.getHours() + horasAdicionais);
   
-  // Extrai pedaço por pedaço no horário local
   const ano = d.getFullYear();
   const mes = String(d.getMonth() + 1).padStart(2, '0');
   const dia = String(d.getDate()).padStart(2, '0');
@@ -37,16 +31,12 @@ const formatarParaAgenda = (dataISO, horasAdicionais = 0) => {
   const min = String(d.getMinutes()).padStart(2, '0');
   const seg = String(d.getSeconds()).padStart(2, '0');
   
-  // Retorna no formato puro YYYYMMDDTHHMMSS (Sem o Z!)
-  // O Google Agenda entende isso como "O horário exato local do usuário"
   return `${ano}${mes}${dia}T${hora}${min}${seg}`;
 };
 
 const dateStartAgenda = formatarParaAgenda(EVENT_DATE);
-// Adicionando 4 horas para o fim da festa
 const dateEndAgenda = formatarParaAgenda(EVENT_DATE, 4); 
 
-// Adicionamos também a timezone de SP/RJ (America/Sao_Paulo) para forçar o Google a não errar!
 const CALENDAR_URL =
   'https://calendar.google.com/calendar/render?action=TEMPLATE' +
   `&text=${encodeURIComponent(`1º Aninho do ${nomeAniversariante} 🚀`)}` +
@@ -56,6 +46,7 @@ const CALENDAR_URL =
   `&details=${encodeURIComponent(`Venha celebrar o 1º aninho do ${nomeAniversariante}! Esperamos por você com muito amor.`)}`;
 
 const MAP_URL = import.meta.env.VITE_LINK_MAPA || `https://maps.google.com/?q=${encodeURIComponent(EVENT_LOCAL.address)}`;
+
 /* ---------- Contagem regressiva ---------- */
 function useCountdown(target) {
   const calc = () => {
@@ -72,7 +63,6 @@ function useCountdown(target) {
   useEffect(() => {
     const id = setInterval(() => setTime(calc()), 1000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return time;
 }
@@ -84,15 +74,22 @@ export default function ConviteContent() {
   const [loading, setLoading] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erro, setErro] = useState("");
+  
+  const [isMuted, setIsMuted] = useState(false);
+  
+  const toggleMute = () => {
+    if (window.conviteMusic) {
+      window.conviteMusic.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
 
-  // Formulário
   const [nomePrincipal, setNomePrincipal] = useState("");
   const [adultos, setAdultos] = useState([]);
   const [criancas, setCriancas] = useState([]);
 
   const countdown = useCountdown(EVENT_DATE);
 
-  /* --- Foguete da barra de rolagem --- */
   useEffect(() => {
     const handleScroll = () => {
       const total = document.documentElement.scrollTop;
@@ -105,7 +102,6 @@ export default function ConviteContent() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  /* --- Animação de entrada ao rolar (scroll reveal) --- */
   useEffect(() => {
     const els = document.querySelectorAll('.reveal:not(.visible)');
     const io = new IntersectionObserver(
@@ -123,7 +119,6 @@ export default function ConviteContent() {
     return () => io.disconnect();
   }, [sucesso]);
 
-  /* --- Acompanhantes --- */
   const changeAdultos = (n) => {
     const val = Math.max(0, Math.min(4, n));
     setAdultos((prev) => {
@@ -144,12 +139,10 @@ export default function ConviteContent() {
     });
   };
 
-  // Atualiza um campo sem alterar o estado original
   const updateItem = (setter, idx, field, value) => {
     setter((prev) => prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item)));
   };
 
-  /* --- Confete em duas laterais --- */
   const fireConfetti = () => {
     const colors = ['#38B6FF', '#FFD166', '#FFFFFF', '#9D5CE6'];
     const end = Date.now() + 2000;
@@ -161,7 +154,6 @@ export default function ConviteContent() {
     confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, colors });
   };
 
-  /* --- Envio para o Firebase --- */
   const confirmarPresenca = async (e) => {
     e.preventDefault();
     setErro("");
@@ -193,26 +185,24 @@ export default function ConviteContent() {
 
   return (
     <>
-      {/* Barra lateral com foguete */}
+      <button className="btn-mute" onClick={toggleMute} aria-label="Mutar música">
+        {isMuted ? '🔇' : '🔊'}
+      </button>
+
       <div className="scroll-tracker">
-        <div className="scroll-rocket" style={{ top: `${scrollProgress * 100}%` }}>🚀</div>
+         <div className="scroll-rocket" style={{ top: `${scrollProgress * 100}%` }}>🚀</div>
       </div>
 
       <div className="cards-container">
-
-        {/* HERO */}
         <div className="hero-photo-wrap reveal">
           <div className="hero-photo-frame">
             <img src="/crianca2.png" alt={nomeAniversariante} className="hero-photo" />
           </div>
-          {/* Usando a variável de ambiente para o nome! */}
           <h1 className="hero-name">{nomeAniversariante}</h1>
           <span className="hero-badge">👨‍🚀 1 Aninho</span>
 
-          {/* Contagem regressiva */}
           <div className="countdown-wrapper">
             <p className="countdown-title">Tempo para o lançamento 🚀</p>
-            
             <div className="countdown" aria-label="Contagem regressiva para a festa">
               {countdown ? (
                 <>
@@ -235,7 +225,6 @@ export default function ConviteContent() {
           )}
         </div>
 
-        {/* 1. MENSAGEM ESPECIAL */}
         <div className="space-card reveal">
           <img src="/mickey-astronaut2.png" alt="" className="deco-char pos-top-right float-alt-1" />
           <span className="card-icon" style={{ marginTop: '10px' }}>✨</span>
@@ -251,12 +240,10 @@ export default function ConviteContent() {
           </p>
         </div>
 
-        {/* 2. DADOS DA FESTA */}
         <div className="space-card reveal">
           <img src="/goofy11.png" alt="" className="deco-char pos-top-left float-alt-2" />
           <span className="card-icon">📍</span>
           <h2 className="card-title">Base de Lançamento</h2>
-
           <div className="info-row">
             <span className="info-icon">🗓️</span>
             <div><p className="info-label">Data</p><p className="info-value">{dataExibicao}</p></div>
@@ -269,14 +256,12 @@ export default function ConviteContent() {
             <span className="info-icon">🗺️</span>
             <div><p className="info-label">Local</p><p className="info-value">{EVENT_LOCAL.address}</p></div>
           </div>
-
           <div className="btn-group">
             <a href={MAP_URL} target="_blank" rel="noopener noreferrer" className="btn-map">📍 Ver no Mapa</a>
             <a href={CALENDAR_URL} target="_blank" rel="noopener noreferrer" className="btn-calendar">📅 Adicionar à agenda</a>
           </div>
         </div>
 
-        {/* 3. PRESENTES */}
         <div className="space-card reveal">
           <img src="/june217.png" alt="" className="deco-char pos-bottom-right float-alt-3" />
           <span className="card-icon">🎁</span>
@@ -289,7 +274,6 @@ export default function ConviteContent() {
           </div>
         </div>
 
-        {/* 4. RSVP */}
         {!sucesso && (
           <div className="space-card reveal">
             <img src="/mickey-mouse-astronaut.png" alt="" className="deco-char pos-top-left float-alt-2" />
@@ -307,7 +291,6 @@ export default function ConviteContent() {
                 onChange={(e) => setNomePrincipal(e.target.value)}
               />
 
-              {/* Adultos */}
               <div className="acomp-box">
                 <p className="info-label" style={{ marginBottom: '10px', color: '#38B6FF' }}>Acompanhantes Adultos</p>
                 <div className="counter-row">
@@ -326,7 +309,6 @@ export default function ConviteContent() {
                 ))}
               </div>
 
-              {/* Crianças */}
               <div className="acomp-box">
                 <p className="info-label" style={{ marginBottom: '10px', color: '#FFD166' }}>Crianças</p>
                 <div className="counter-row">
@@ -365,7 +347,6 @@ export default function ConviteContent() {
           </div>
         )}
 
-        {/* FOOTER */}
         <footer className="footer reveal">
           Feito com <em>🚀 amor</em> para o <em>{nomeAniversariante}</em><br />
           <a href="/admin" className="footer-admin-link">⚙ área restrita</a>
@@ -376,7 +357,6 @@ export default function ConviteContent() {
             </a>
           </div>
         </footer>
-
       </div>
     </>
   );

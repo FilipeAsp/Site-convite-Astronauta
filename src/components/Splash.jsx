@@ -7,10 +7,25 @@ export default function Splash({ onAnimationEnd }) {
   const [isLaunching, setIsLaunching] = useState(false);
 
   const handleLaunch = () => {
+    // 1. Se o botão já foi clicado, ignora.
+    if (isLaunching) return;
+    
     setIsLaunching(true);
     
-    // Aumentamos o tempo para 2.8s: 
-    // 1.2s pro foguete subir e encher de fumaça + 1.6s pra fumaça dissipar!
+    // 2. Trava absoluta: Só cria a música se ELA NÃO EXISTIR AINDA!
+    if (!window.conviteMusic) {
+      console.log("🚀 Iniciando a turbina de áudio pela primeira e única vez!");
+      const audio = new Audio('/musica.mp3');
+      audio.loop = true; 
+      audio.volume = 0.4; 
+      window.conviteMusic = audio;
+      
+      // Toca a música
+      window.conviteMusic.play().catch(err => {
+        console.log("Navegador bloqueou o áudio:", err);
+      });
+    }
+
     setTimeout(() => {
       onAnimationEnd();
     }, 2800); 
@@ -25,7 +40,7 @@ export default function Splash({ onAnimationEnd }) {
       <img src="/astronaut-donald-duck-star.png" alt="Donald" className="splash-char char-donald" />
 
       <div className="splash-content">
-        <img src="/crianca.png" alt={import.meta.env.VITE_NOME_CRIANCA || "Lucca"} className="splash-photo" />
+        <img src="/crianca.png" alt={import.meta.env.VITE_NOME_CRIANCA || "Aniversariante"} className="splash-photo" />
         <h1 className="splash-title">
           <span className="splash-name">{import.meta.env.VITE_NOME_CRIANCA || "Nome do Aniversariante"} faz 1!</span>
         </h1>
