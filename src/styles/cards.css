@@ -652,3 +652,30 @@ select.input-field option { background: #0d1f3a; color: #fff; }
   margin-bottom: 12px;
   font-weight: bold;
 }
+/* Botão Flutuante de Mute */
+.btn-mute {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 1.5rem;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-mute:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
