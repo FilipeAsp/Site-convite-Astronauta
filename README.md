@@ -54,7 +54,6 @@ Desenvolvido por [**ASP Code**](https://www.instagram.com/asp_code/).
 ## 🔒 Painel Administrativo
 
 Para acessar a lista de confirmados, acesse a rota `/admin` no seu navegador (ex: `http://localhost:5173/admin`).
-* **Senha Padrão Inicial:** `Lucca01` (pode ser alterada dentro do próprio painel).
 
 ---
 *Template base desenvolvido para escalabilidade e fácil customização para futuros clientes da agência ASP Code.*

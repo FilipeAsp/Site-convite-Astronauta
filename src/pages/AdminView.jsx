@@ -14,8 +14,9 @@ export default function AdminView() {
   const [stats, setStats] = useState({ familias: 0, totalPessoas: 0, adultos: 0, criancas: 0, pagantes: 0, gratuitas: 0 });
   const [novaSenha, setNovaSenha] = useState("");
 
-  // Puxa a idade limite do .env (Se não achar, usa 5 como padrão de segurança)
-  const IDADE_PAGANTE = parseInt(import.meta.env.VITE_FREE_AGE_LIMIT) || 5;
+  // Usando a variável do ENV para não expor a lógica fixa (Ex: se for 6, menores de 6 são isentos)
+  const IDADE_PAGANTE = parseInt(import.meta.env.VITE_FREE_AGE_LIMIT) || 6;
+  const IDADE_MAX_ISENTA = IDADE_PAGANTE - 1; 
 
   // Carrega a biblioteca do Excel (SheetJS)
   useEffect(() => {
@@ -69,9 +70,9 @@ export default function AdminView() {
               else if (str.includes("12 anos ou mais")) anos = 12;
               else { const n = parseInt(str); if (!isNaN(n)) anos = n; }
 
-              // Compara com a variável do .env
-              if (anos !== null && anos > IDADE_PAGANTE) pagantes++;
-              else gratuitas++;
+              // Compara com a variável do ENV
+              if (anos !== null && anos >= IDADE_PAGANTE) pagantes++;
+              else if (anos !== null && anos < IDADE_PAGANTE) gratuitas++; 
             } else {
               adult++;
             }
@@ -125,13 +126,19 @@ export default function AdminView() {
           else { const n = parseInt(str); if (!isNaN(n)) anos = n; }
 
           const pagante = anos === null ? "Verificar" : (anos >= IDADE_PAGANTE ? "Sim" : "Não");
-          rows.push({ "Tipo": "Criança", "Nome": a.nome, "Parentesco": a.parentesco || "—", "Idade": a.idade || "—", "Pagante?": pagante === "Sim" ? `Sim (${IDADE_PAGANTE}+ anos)` : pagante === "Não" ? `Não (< ${IDADE_PAGANTE} anos)` : "Verificar" });
+          rows.push({ 
+            "Tipo": "Criança", 
+            "Nome": a.nome, 
+            "Parentesco": a.parentesco || "—", 
+            "Idade": a.idade || "—", 
+            "Pagante?": pagante === "Sim" ? `Sim (Acima de ${IDADE_MAX_ISENTA} anos)` : pagante === "Não" ? `Isento (Ate ${IDADE_MAX_ISENTA} anos)` : "Verificar" 
+          });
         }
       });
     });
 
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [{wch: 15}, {wch: 25}, {wch: 20}, {wch: 15}, {wch: 20}];
+    ws["!cols"] = [{wch: 15}, {wch: 25}, {wch: 20}, {wch: 15}, {wch: 25}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Convidados");
     XLSX.writeFile(wb, `Lista_Lucca_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -172,8 +179,8 @@ export default function AdminView() {
           <div className="admin-stat-box"><span className="admin-stat-num" style={{color: '#fff'}}>{stats.familias}</span><span className="admin-stat-label">Famílias</span></div>
           <div className="admin-stat-box"><span className="admin-stat-num" style={{color: '#38B6FF'}}>{stats.adultos}</span><span className="admin-stat-label">Total de Adultos</span></div>
           <div className="admin-stat-box"><span className="admin-stat-num" style={{color: '#FFD166'}}>{stats.criancas}</span><span className="admin-stat-label">Total de Crianças</span></div>
-          <div className="admin-stat-box" style={{borderColor: 'rgba(5, 150, 105, 0.4)'}}><span className="admin-stat-num" style={{color: '#059669'}}>{stats.pagantes}</span><span className="admin-stat-label">Crianças Pagantes ({IDADE_PAGANTE}+)</span></div>
-          <div className="admin-stat-box" style={{borderColor: 'rgba(255, 107, 107, 0.4)'}}><span className="admin-stat-num" style={{color: '#FF6B6B'}}>{stats.gratuitas}</span><span className="admin-stat-label">Crianças Gratuitas (&lt;{IDADE_PAGANTE})</span></div>
+          <div className="admin-stat-box" style={{borderColor: 'rgba(5, 150, 105, 0.4)'}}><span className="admin-stat-num" style={{color: '#059669'}}>{stats.pagantes}</span><span className="admin-stat-label">Crianças Pagantes (Acima de {IDADE_MAX_ISENTA} anos)</span></div>
+          <div className="admin-stat-box" style={{borderColor: 'rgba(255, 107, 107, 0.4)'}}><span className="admin-stat-num" style={{color: '#FF6B6B'}}>{stats.gratuitas}</span><span className="admin-stat-label">Crianças Isentas (Até {IDADE_MAX_ISENTA} anos)</span></div>
           <div className="admin-stat-box" style={{background: 'rgba(56, 182, 255, 0.1)', borderColor: '#38B6FF'}}><span className="admin-stat-num" style={{color: '#fff'}}>{stats.totalPessoas}</span><span className="admin-stat-label">Total Geral</span></div>
         </div>
 
@@ -199,7 +206,13 @@ export default function AdminView() {
                         <div key={i} className="guest-tag">
                           {a.nome}
                           <span style={{ opacity:0.8, fontSize:'0.7rem' }}>
-                            ({a.parentesco} • <span className={a.tipo === 'Criança' ? 'tag-child' : 'tag-adult'}>{a.tipo}</span> {a.tipo === 'Criança' && a.idade ? ` • ${a.idade}` : ''})
+                            ({a.parentesco} 
+                            <span className={a.tipo === 'Criança' ? 'tag-child' : 'tag-adult'}>{a.tipo}</span> {a.tipo === 'Criança' && a.idade ? ` • ${a.idade}` : ''})
+                            {a.tipo === 'Criança' && (
+                               <span style={{ marginLeft: 4, color: parseInt(a.idade) >= IDADE_PAGANTE ? '#FF6B6B' : '#059669', fontWeight: 'bold' }}>
+                                 {parseInt(a.idade) >= IDADE_PAGANTE ? '[Pagante]' : '[Isento]'}
+                               </span>
+                            )}
                           </span>
                         </div>
                       )) : <span style={{color: '#94a3b8', fontSize: '0.8rem'}}>Sem acompanhantes</span>}
